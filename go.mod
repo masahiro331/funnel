@@ -1,6 +1,6 @@
 module github.com/masahiro331/funnel
 
-go 1.19
+go 1.18
 
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.18.8
