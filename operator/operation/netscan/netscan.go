@@ -89,6 +89,9 @@ func (n *NmapOperation) Action() error {
 		}
 		if len(statuses) < parallel {
 			for i := 0; i < parallel-len(statuses); i++ {
+				if len(n.tasks) == 0 {
+					break
+				}
 				task := n.tasks[0]
 				n.tasks = n.tasks[1:]
 				pod.Exec(task.Id, strings.Join(task.Args, " "), task.Args)
