@@ -3,6 +3,7 @@ package netscan
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,18 +20,18 @@ func NewNmapOperation(name string, parallels int, hosts []string) operation.Oper
 	var tasks []operation.Task
 	for _, h := range hosts {
 		tasks = append(tasks, operation.Task{
-			Id:      strings.Join([]string{"task", "nmap", string(time.Now().UnixMicro())}, "-"),
+			Id:      strings.Join([]string{"task", "nmap", strconv.Itoa(int(time.Now().UnixMicro()))}, "-"),
 			Command: "nmap",
 			Args:    []string{"-sU", h}, // UDP scan
 		})
 		tasks = append(tasks, operation.Task{
-			Id:      strings.Join([]string{"task", "nmap", string(time.Now().UnixMicro())}, "-"),
+			Id:      strings.Join([]string{"task", "nmap", strconv.Itoa(int(time.Now().UnixMicro()))}, "-"),
 			Command: "nmap",
 			Args:    []string{"-sS", h}, // TCP scan
 		})
 	}
 	return &NmapOperation{
-		Id:        strings.Join([]string{"operation", "nmap", string(time.Now().UnixMicro())}, "-"),
+		Id:        strings.Join([]string{"operation", "nmap", strconv.Itoa(int(time.Now().UnixMicro()))}, "-"),
 		name:      name,
 		tasks:     tasks,
 		Parallels: parallels,
@@ -94,7 +95,7 @@ func (n *NmapOperation) Action() error {
 				}
 				task := n.tasks[0]
 				n.tasks = n.tasks[1:]
-				pod.Exec(task.Id, strings.Join(task.Args, " "), task.Args)
+				pod.Exec(task.Id, task.Command, task.Args)
 			}
 		}
 		for _, status := range statuses {
@@ -105,7 +106,7 @@ func (n *NmapOperation) Action() error {
 			if err != nil {
 				return err
 			}
-			fmt.Println(result)
+			fmt.Println(string(result))
 		}
 	}
 

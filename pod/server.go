@@ -21,7 +21,7 @@ func Exec(writer http.ResponseWriter, request *http.Request) {
 
 	e := ExecRequest{}
 	if err := json.NewDecoder(request.Body).Decode(&e); err != nil {
-		utils.Error(err, writer, http.StatusBadRequest)
+		utils.Error(fmt.Errorf("decode exec request error: %v", err), writer, http.StatusBadRequest)
 		return
 	}
 
@@ -61,7 +61,7 @@ func Statuses(writer http.ResponseWriter, _ *http.Request) {
 		return true
 	})
 	if err := json.NewEncoder(writer).Encode(&statuses); err != nil {
-		utils.Error(err, writer, http.StatusInternalServerError)
+		utils.Error(fmt.Errorf("decode statuses request error: %v", err), writer, http.StatusInternalServerError)
 		return
 	}
 }
@@ -71,7 +71,7 @@ func Pull(writer http.ResponseWriter, request *http.Request) {
 
 	e := PullRequest{}
 	if err := json.NewDecoder(request.Body).Decode(&e); err != nil {
-		utils.Error(err, writer, http.StatusBadRequest)
+		utils.Error(fmt.Errorf("decode pull request error: %v", err), writer, http.StatusBadRequest)
 		return
 	}
 	v, exist := m.LoadAndDelete(e.TaskId)

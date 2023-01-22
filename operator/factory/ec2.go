@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/masahiro331/funnel/pod"
+	"io"
 	"log"
 	"net/http"
 )
@@ -38,7 +39,7 @@ func (e *EC2) Target() string {
 }
 
 func (e *EC2) Exec(taskId, name string, args []string) error {
-	url := fmt.Sprintf("http://%s:6332/exec", e.PublicIp)
+	url := fmt.Sprintf("http://%s:6332/exec", e.Target())
 	request := pod.ExecRequest{
 		TaskId: taskId,
 		Name:   name,
@@ -47,12 +48,12 @@ func (e *EC2) Exec(taskId, name string, args []string) error {
 
 	b, err := json.Marshal(&request)
 	if err != nil {
-		return err
+		return fmt.Errorf("exec request marshal error: %v", err)
 	}
 
 	resp, err := http.Post(url, "application/json", bytes.NewReader(b))
 	if err != nil {
-		return err
+		return fmt.Errorf("post exec request error: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -60,45 +61,45 @@ func (e *EC2) Exec(taskId, name string, args []string) error {
 }
 
 func (e *EC2) Statuses() ([]pod.Status, error) {
-	url := fmt.Sprintf("http://%s:6332/statuses", e.PublicIp)
+	url := fmt.Sprintf("http://%s:6332/statuses", e.Target())
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get statuses request error: %v", err)
 	}
 	defer resp.Body.Close()
 
 	var statuses []pod.Status
 
 	if err := json.NewDecoder(resp.Body).Decode(&statuses); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode statuses response error: %v", err)
 	}
 
 	return statuses, nil
 }
 
-func (e *EC2) Pull(taskId string) (pod.Result, error) {
-	url := fmt.Sprintf("http://%s:6332/pull", e.PublicIp)
+func (e *EC2) Pull(taskId string) ([]byte, error) {
+	url := fmt.Sprintf("http://%s:6332/pull", e.Target())
 	r := pod.PullRequest{
 		TaskId: taskId,
 	}
 	b, err := json.Marshal(&r)
 	if err != nil {
-		return pod.Result{}, err
+		return nil, fmt.Errorf("marshal pull request error: %v", err)
 	}
 
-	resp, err := http.Post(url, "application/json", bytes.NewReader(b))
+	resp, err := http.Post(url, "", bytes.NewReader(b))
 	if err != nil {
-		return pod.Result{}, err
+		return nil, fmt.Errorf("post pull request error: %v", err)
 	}
 	defer resp.Body.Close()
 
-	result := pod.Result{}
+	// result := pod.Result{}
+	// if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	// 	return pod.Result{}, fmt.Errorf("decode pull response error: %v", err)
+	// }
+	buf, _ := io.ReadAll(resp.Body)
 
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return pod.Result{}, err
-	}
-
-	return result, nil
+	return buf, nil
 }
 
 func (e *EC2) Delete() error {
@@ -106,7 +107,7 @@ func (e *EC2) Delete() error {
 		InstanceIds: []string{e.InstanceId},
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("terminate instance error: %v", err)
 	}
 	log.Printf("terminating... %s", e.InstanceId)
 	return nil
@@ -149,7 +150,11 @@ func (e *EC2) Ready() (bool, error) {
 func (e *EC2Factory) Create(number int) ([]Pod, error) {
 	ctx := context.Background()
 	c, _ := New(ctx, Option{})
-	userData := "c3VkbyB5dW0gaW5zdGFsbCAteSBubWFwCmN1cmwgLUxPIGh0dHBzOi8vZ2l0aHViLmNvbS9tYXNhaGlybzMzMS9mdW5uZWwvcmVsZWFzZXMvZG93bmxvYWQvMC4wLjEvZnVubmVsXzAuMC4xX0xpbnV4X3g4Nl82NC50YXIuZ3oKdGFyIHh2ZnogZnVubmVsXzAuMC4xX0xpbnV4X3g4Nl82NC50YXIuZ3oKc3VkbyAuL2Z1bm5lbCBwb2QgJg=="
+	userData := `#!/bin/bash
+yum install -y nmap
+cd /home/ec2-user
+curl -LO https://github.com/masahiro331/funnel/releases/download/0.0.1/funnel_0.0.1_Linux_x86_64.tar.gz
+tar xvfz funnel_0.0.1_Linux_x86_64.tar.gz`
 	input := &ec2.RunInstancesInput{
 		MaxCount:     toPtr(int32(number)),
 		MinCount:     toPtr(int32(1)),

@@ -3,6 +3,7 @@ package operation
 import (
 	"github.com/masahiro331/funnel/operator/factory"
 	"log"
+	"time"
 )
 
 var (
@@ -40,6 +41,7 @@ func init() {
 					Operations = append(Operations[:i], Operations[i+1:]...)
 				}
 			}
+			time.Sleep(time.Second)
 		}
 	}()
 }
