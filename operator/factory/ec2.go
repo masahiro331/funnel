@@ -149,11 +149,15 @@ func (e *EC2) Ready() (bool, error) {
 func (e *EC2Factory) Create(number int) ([]Pod, error) {
 	ctx := context.Background()
 	c, _ := New(ctx, Option{})
+	userData := "c3VkbyB5dW0gaW5zdGFsbCBubWFwCmN1cmwgLXNPIGh0dHBzOi8vZ2l0aHViLmNvbS9tYXNha" +
+		"GlybzMzMS9mdW5uZWwvcmVsZWFzZXMvZG93bmxvYWQvMC4wLjEvZnVubmVsXzAuMC4xX0xpbnV4X3g4Nl" +
+		"82NC50YXIuZ3oKdGFyIHh2ZnogZnVubmVsXzAuMC4xX0xpbnV4X3g4Nl82NC50YXIuZ3oKc3VkbyAuL2Z1bm5lbCBwb2Q="
 	input := &ec2.RunInstancesInput{
 		MaxCount:     toPtr(int32(number)),
 		MinCount:     toPtr(int32(1)),
 		ImageId:      toPtr(ImageID),
 		InstanceType: types.InstanceTypeT2Micro,
+		UserData:     &userData,
 	}
 	o, err := c.RunInstances(ctx, input)
 	if err != nil {
