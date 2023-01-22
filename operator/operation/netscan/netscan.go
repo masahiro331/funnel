@@ -1,7 +1,7 @@
 package netscan
 
 import (
-	"fmt"
+	"github.com/masahiro331/funnel/operator/report"
 	"log"
 	"strconv"
 	"strings"
@@ -13,33 +13,45 @@ import (
 )
 
 const (
-	parallel = 10
+	parallel = 40
 )
 
 func NewNmapOperation(name string, parallels int, hosts []string) operation.Operation {
 	var tasks []operation.Task
 	for _, h := range hosts {
 		tasks = append(tasks, operation.Task{
-			Id:      strings.Join([]string{"task", "nmap", strconv.Itoa(int(time.Now().UnixMicro()))}, "-"),
+			Id:      strings.Join([]string{"task", "nmap", "udp", h}, "-"),
 			Command: "nmap",
 			Args:    []string{"-sU", h}, // UDP scan
 		})
 		tasks = append(tasks, operation.Task{
-			Id:      strings.Join([]string{"task", "nmap", strconv.Itoa(int(time.Now().UnixMicro()))}, "-"),
+			Id:      strings.Join([]string{"task", "nmap", "tcp", h}, "-"),
 			Command: "nmap",
 			Args:    []string{"-sS", h}, // TCP scan
 		})
 	}
 	return &NmapOperation{
-		Id:        strings.Join([]string{"operation", "nmap", strconv.Itoa(int(time.Now().UnixMicro()))}, "-"),
+		Id:        strings.Join([]string{"operation", "nmap", strconv.Itoa(int(time.Now().UnixNano()))}, "-"),
 		name:      name,
 		tasks:     tasks,
 		Parallels: parallels,
 	}
 }
 
+func (n *NmapOperation) Done() error {
+	for _, pod := range n.Pods() {
+		err := pod.Delete()
+		if err != nil {
+			log.Printf("error: %s", err.Error())
+		}
+	}
+	n.state = operation.Done
+
+	return nil
+}
+
 func (n *NmapOperation) Name() string {
-	return n.name
+	return n.Id
 }
 
 func (n *NmapOperation) Init(f factory.Factory) (err error) {
@@ -65,6 +77,7 @@ func (n *NmapOperation) Init(f factory.Factory) (err error) {
 				n.state = operation.Running
 				break
 			}
+			time.Sleep(time.Second * 10)
 		}
 	}()
 	return nil
@@ -95,6 +108,7 @@ func (n *NmapOperation) Action() error {
 				}
 				task := n.tasks[0]
 				n.tasks = n.tasks[1:]
+				log.Printf("enqueue %s: %s %v", task.Id, task.Command, task.Args)
 				pod.Exec(task.Id, task.Command, task.Args)
 			}
 		}
@@ -106,7 +120,14 @@ func (n *NmapOperation) Action() error {
 			if err != nil {
 				return err
 			}
-			fmt.Println(string(result))
+
+			report.MemStore.Push(
+				n.Id,
+				report.Report{
+					Id:      result.Status.TaskId,
+					Content: result.Content.Bytes(),
+				},
+			)
 		}
 	}
 

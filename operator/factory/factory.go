@@ -14,5 +14,5 @@ type Pod interface {
 
 	Exec(taskId, name string, args []string) error
 	Statuses() ([]pod.Status, error)
-	Pull(taskId string) ([]byte, error)
+	Pull(taskId string) (pod.Result, error)
 }

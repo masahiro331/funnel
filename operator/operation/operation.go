@@ -2,8 +2,8 @@ package operation
 
 import (
 	"github.com/masahiro331/funnel/operator/factory"
+	"github.com/masahiro331/funnel/operator/report"
 	"log"
-	"time"
 )
 
 var (
@@ -16,6 +16,7 @@ const (
 	Initialize State = "Initialize"
 	Running    State = "Running"
 	Finish     State = "Finish"
+	Done       State = "Done"
 )
 
 func init() {
@@ -32,16 +33,17 @@ func init() {
 					}
 
 				case Finish:
-					for _, pod := range o.Pods() {
-						err := pod.Delete()
-						if err != nil {
-							log.Printf("error: %s", err.Error())
-						}
+					err := o.Done()
+					if err != nil {
+						log.Printf("error: %s", err.Error())
 					}
-					Operations = append(Operations[:i], Operations[i+1:]...)
+				case Done:
+					n := report.MemStore.Len(o.Name())
+					if n == 0 {
+						Operations = append(Operations[:i], Operations[i+1:]...)
+					}
 				}
 			}
-			time.Sleep(time.Second)
 		}
 	}()
 }
@@ -52,6 +54,7 @@ type Operation interface {
 	State() State
 	Pods() []factory.Pod
 	Action() error
+	Done() error
 }
 
 func Register(o Operation) {

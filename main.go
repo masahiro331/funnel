@@ -12,7 +12,7 @@ func main() {
 	subcommand := os.Args[1]
 	switch subcommand {
 	case "commander":
-		commander.Run()
+		commander.Run(os.Args[2], os.Args[3])
 	case "operator":
 		operator.Run()
 	case "pod":
