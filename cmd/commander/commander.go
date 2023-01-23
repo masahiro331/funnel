@@ -28,7 +28,6 @@ func monitor(host string, operationId string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer resp.Body.Close()
 
 		var reports []report.Report
 		if err := json.NewDecoder(resp.Body).Decode(&reports); err != nil {
@@ -37,6 +36,7 @@ func monitor(host string, operationId string) {
 		for _, repo := range reports {
 			fmt.Println(string(repo.Content))
 		}
+		resp.Body.Close()
 	}
 
 }
